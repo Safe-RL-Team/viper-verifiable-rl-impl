@@ -14,12 +14,15 @@ This repository implements and tests the viper algorithm on the following enviro
 
 ## Usage
 
+The entire project can be run using the `main.py` script which can take more options than the ones mentioned below.
+To get a full list of options run `python main.py --help`.
+
 ### Training the oracle
 
 Atari Pong:
 
 ```
-python main.py train-oracle --env-name PongNoFrameskip-v4 --n-env 8 --total-timesteps 10_000_000
+python main.py train-oracle --env-name PongNoFrameskip-v4 --n-env 8 --total-timesteps 15_000_000
 ```
 
 Cart pole:
@@ -28,6 +31,7 @@ Cart pole:
 python main.py train-oracle --env-name CartPole-v1 --n-env 8 --total-timesteps 100_000
 ```
 
+You can always resume training a stored model by adding the `--resume` flag to the same command.
 
 ### Running viper
 

@@ -2,7 +2,10 @@ import gym
 import numpy as np
 from gym import register
 from stable_baselines3.common.env_util import make_atari_env
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv
+
+from gym_env.pong_wrapper import PongWrapper
 
 register(
     id='ToyPong-v0',
@@ -10,18 +13,13 @@ register(
     kwargs={'args': None}
 )
 
-register(
-    id='WrappedPong-v0',
-    entry_point='gym_env.atari_pong:AtariPong',
-    kwargs={'args': None}
-)
 
-
-def make_env(args):
+def make_env(args, test_viper=False):
     if args.env_name == "PongNoFrameskip-v4":
-        env = make_atari_env(args.env_name, n_envs=args.n_env)
-        env = VecFrameStack(env, n_stack=4)
-        return env
+        env = make_atari_env("PongNoFrameskip-v4", n_envs=args.n_env)
+        if test_viper is True:
+            return PongWrapper(env, return_extracted_obs=True)
+        return VecFrameStack(PongWrapper(env), n_stack=4)
     if args.env_name == "CartPole-v1":
         return DummyVecEnv([lambda: gym.make(args.env_name) for _ in range(args.n_env)])
     return gym.make(args.env_name)
