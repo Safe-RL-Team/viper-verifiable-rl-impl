@@ -1,10 +1,9 @@
-import gym
 import numpy as np
-from stable_baselines3.common.evaluation import evaluate_policy
 
 from gym_env import make_env
 from model.paths import get_viper_path
 from model.tree_wrapper import TreeWrapper
+from test.evaluate import evaluate_policy
 
 
 def test_viper(args):

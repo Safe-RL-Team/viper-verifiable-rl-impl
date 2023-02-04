@@ -4,12 +4,14 @@ from train.oracle import train_oracle
 from train.viper import train_viper
 from test.oracle import test_oracle
 from test.viper import test_viper
+from verify.correct import verify_correct
 
 COMMAND_MAP = {
     'train-oracle': train_oracle,
     'test-oracle': test_oracle,
     'train-viper': train_viper,
     'test-viper': test_viper,
+    'verify-correct': verify_correct,
 }
 
 if __name__ == "__main__":
@@ -54,11 +56,8 @@ if __name__ == "__main__":
 
     train_viper = subparsers.add_parser('train-viper', parents=[parent_parser], help="Run the viper algorithm")
     train_viper.add_argument(
-        "--steps", type=int, default=80,
+        "--n-iter", type=int, default=80,
         help="Number of iterations of Viper")
-    train_viper.add_argument(
-        "--n-steps", type=int, default=1000,
-        help="Number of datapoints to sample during each iteration of Viper")
     train_viper.add_argument(
         "--max-leaves", type=int, default=None,
         help="Maximum number of leave nodes to use for the extracted decision tree")
@@ -67,6 +66,15 @@ if __name__ == "__main__":
         help="Maximum depth to use for the extracted decision tree")
 
     test_viper = subparsers.add_parser('test-viper', parents=[parent_parser], help="Test viper")
+    test_viper.add_argument(
+        "--max-leaves", type=int, default=None,
+        help="Maximum number of leave nodes to use for the extracted decision tree")
+    test_viper.add_argument(
+        "--max-depth", type=int, default=None,
+        help="Maximum depth to use for the extracted decision tree")
+
+    test_viper = subparsers.add_parser('verify-correct', parents=[parent_parser],
+                                       help="Verify correctness of the distilled policy.")
     test_viper.add_argument(
         "--max-leaves", type=int, default=None,
         help="Maximum number of leave nodes to use for the extracted decision tree")

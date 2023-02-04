@@ -8,11 +8,12 @@ def train_oracle(args):
     env = make_env(args)
     if args.resume:
         print("Resuming training")
-        model = get_model_cls(args).load(get_oracle_path(args), env=env, buffer_size=1000_000)
+        model = get_model_cls(args).load(get_oracle_path(args), env=env)
     else:
         model = get_model(env, args)
 
-    model.learn(total_timesteps=args.total_timesteps, log_interval=1, reset_num_timesteps=not args.resume)
+    model.learn(total_timesteps=args.total_timesteps, eval_freq=args.total_timesteps // 2,
+                reset_num_timesteps=not args.resume, tb_log_name=args.env_name)
     model_path = get_oracle_path(args)
     model.save(model_path)
     print(f"Training complete. Saved model to {model_path}")
@@ -34,10 +35,10 @@ ENV_TO_MODEL = {
             'policy': 'CnnPolicy',
             'learning_starts': 100000,
             'learning_rate': 1e-4,
-            'buffer_size': 100_000,
+            'buffer_size': 1_000_000,
             'batch_size': 32,
             'target_update_interval': 1000,
-            'train_freq': 4,
+            'train_freq': 512,  # TODO try to tune this to n-env
             'gradient_steps': 1,
             'exploration_fraction': 0.1,
             'exploration_final_eps': 0.01,
@@ -62,6 +63,16 @@ ENV_TO_MODEL = {
             'gamma': 0.98,
             'ent_coef': 0.0
         }
+    },
+    'ToyPong-v0': {
+        'model': PPO,
+        'kwargs': {
+            'policy': 'MlpPolicy',
+            'batch_size': 32,
+            'n_epochs': 20,
+            'gamma': 0.99,
+            'ent_coef': 0.01
+        }
     }
 }
 
@@ -81,4 +92,4 @@ def get_model(env, args):
     model_kwargs = cfg['kwargs']
     if args.resume:
         model_kwargs.update(cfg['kwargs_resume'])
-    return cfg['model'](env=env, verbose=args.verbose, **model_kwargs)
+    return cfg['model'](env=env, verbose=args.verbose, tensorboard_log='./log', **model_kwargs)

@@ -1,6 +1,5 @@
 import warnings
 
-import gym
 import numpy as np
 import torch
 from sklearn.tree import DecisionTreeClassifier
@@ -9,7 +8,7 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 
 from tqdm import tqdm
 
-from gym_env import make_env, is_done
+from gym_env import make_env
 from model.paths import get_oracle_path, get_viper_path
 from model.tree_wrapper import TreeWrapper
 from test.evaluate import evaluate_policy
@@ -17,16 +16,15 @@ from train.oracle import get_model_cls
 
 
 def train_viper(args):
-    # Load stable baselines model from path
-    print(f"Training Viper  on {args.env_name}")
+    print(f"Training Viper on {args.env_name}")
 
     # TODO turn into numpy array
     dataset = []
     policy = None
     policies = []
 
-    for i in tqdm(range(args.steps)):
-        beta = 1 - (i / args.steps)
+    for i in tqdm(range(args.n_iter)):
+        beta = 1 - (i / args.n_iter)
         dataset += sample_trajectory(args, policy, beta)
 
         clf = DecisionTreeClassifier(max_depth=args.max_depth, max_leaf_nodes=args.max_leaves)
@@ -42,8 +40,8 @@ def train_viper(args):
     print(f"Performing cross-validation to find the best policy")
     # Cross validate each policy and save the best one
     rewards = []
-    env = make_env(args, test_viper=True)
     for i, policy in enumerate(tqdm(policies)):
+        env = make_env(args, test_viper=True)
         mean_reward, std_reward = evaluate_policy(TreeWrapper(policy), env)
         if args.verbose == 2:
             print(f"Policy score: {mean_reward:0.4f} +/- {std_reward:0.4f}")
@@ -64,6 +62,7 @@ def load_oracle_env(args):
         env = make_env(args)
         model_cls = get_model_cls(args)
         oracle = model_cls.load(get_oracle_path(args), env=env)
+        oracle.verbose = args.verbose
         # SB will add additional wrappers to the env
         env = oracle.env
         return env, oracle
@@ -79,7 +78,8 @@ def sample_trajectory(args, policy, beta):
     is_pong = args.env_name == "PongNoFrameskip-v4"
 
     obs = env.reset()
-    while len(trajectory) < args.n_steps:
+    n_steps = args.total_timesteps // args.n_iter
+    while len(trajectory) < n_steps:
         active_policy = [policy, oracle][np.random.binomial(1, beta)]
         if isinstance(active_policy, DecisionTreeClassifier):
             if is_pong:
@@ -120,7 +120,8 @@ def get_loss(model: BaseAlgorithm, obs):
         return q_values.max(axis=1) - q_values.min(axis=1)
     if isinstance(model, PPO):
         # For policy gradient methods we use the max entropy formulation
-        # to get Q(s, a) = -log pi(a|s) TODO copilot says minus??
+        # to get Q(s, a) \approx log pi(a|s)
+        # See Ziebart et al. 2008
         action_prob_tensor = model.policy.get_distribution(torch.from_numpy(obs)).distribution.probs
         action_prob = np.log(action_prob_tensor.detach().numpy() + 1e-4)
         return action_prob.max(axis=1) - action_prob.min(axis=1)

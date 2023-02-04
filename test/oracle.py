@@ -3,13 +3,13 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 from gym_env import make_env
 from model.paths import get_oracle_path
-from train.oracle import get_model
+from train.oracle import get_model_cls
 
 
 def test_oracle(args):
     env = make_env(args)
-    model = get_model(env, args)
-    model = model.load(get_oracle_path(args))
+    model_cls = get_model_cls(args)
+    model = model_cls.load(get_oracle_path(args))
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=50, render=args.render)
     print(f"Mean reward: {mean_reward:.2f} +/- {std_reward:.2f}")
 

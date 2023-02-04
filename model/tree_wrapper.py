@@ -17,14 +17,6 @@ class TreeWrapper:
             episode_start: Optional[np.ndarray] = None,
             deterministic: bool = False,
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        if len(observation.shape) > 2:
-            print(observation)
-            # SB somehow keeps wrapping our pong wrapper in another vec env
-            result = []
-            for obs in observation:
-                result.append(self.tree.predict(obs))
-            print(result)
-            return np.array(result).reshape(-1), None
         return self.tree.predict(observation), None
 
     @classmethod
@@ -37,5 +29,5 @@ class TreeWrapper:
         dump(self.tree, path)
 
     def print_info(self):
-        print(f"Tree depth:\t{self.tree.get_depth()}")
+        print(f"Max depth:\t{self.tree.get_depth()}")
         print(f"# Leaves:\t{self.tree.get_n_leaves()}")
