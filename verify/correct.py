@@ -1,7 +1,7 @@
 import math
 from itertools import pairwise
 
-from z3 import RealVector, And, Implies, Or, sat, If
+from z3 import RealVector, And, Implies, Or, sat, If, Solver, Not
 
 from gym_env import make_env
 from gym_env.toy_pong import ToyPong
@@ -69,7 +69,7 @@ def verify_correct(args):
             [And(s[feature] <= threshold) if op == "<=" else And(s[feature] > threshold) for feature, op, threshold in
              conditions])
 
-    t_max = math.ceil(2 * env.height / env.min_speed)
+    t_max = 2 # math.ceil(2 * env.height / env.min_speed)
 
     # Create vector of state variables for each timestep
     # s = [paddle_x, ball_pos_x, ball_pos_y, ball_vel_x, ball_vel_y]
@@ -79,7 +79,7 @@ def verify_correct(args):
         results = []
         for partition in tree_partitions.values():
             # the tree partitions only affect the paddle position
-            next_state_is_s_t = And(s_t[0] == partition['value'])
+            next_state_is_s_t = And(s_t[0] == s_t[0] + env.paddle_speed * partition['value'])
             results.append(Implies(is_state_in_partition(s_t_1, partition), next_state_is_s_t))
 
         # Manually add the dynamics of the ball
@@ -149,7 +149,7 @@ def verify_correct(args):
             s_t[4] == -abs(s_t_1[4])
         ])
         results.append(Implies(collision_bottom_paddle, collision_bottom_paddle_beta))
-
+        print("phi_t len", len(results))
         return Or(results)
 
     # Check if the state is in a partition
@@ -162,24 +162,22 @@ def verify_correct(args):
     # Assert that the state transitions are correct
     phi = [phi_t(s_t, s_t_1) for s_t, s_t_1 in pairwise(s)]
 
-    program = Implies(And(phi, y_0_safe), y_t_safe)
+    program = Implies(And([y_0_safe] + phi), y_t_safe)
 
     # To show that the program is correct, we need to show that its **negation** is unsatisfiable
     # i.e. there is no counterexample to the program
-    print(program)
-    print(program.check())
-    print(program.model())
+    solver = Solver()
+    solver.add(Not(program))
     # If the program is not correct print where the counterexample is
-    if program.check() == sat:
+    if solver.check() == sat:
         print("counterexample found!")
-        print("s_0 = {}".format(program.model()[s[0]]))
-        print("s_1 = {}".format(program.model()[s[1]]))
-        print("s_2 = {}".format(program.model()[s[2]]))
-        print("s_3 = {}".format(program.model()[s[3]]))
-        print("s_4 = {}".format(program.model()[s[4]]))
+        m = solver.model()
+        for d in m.decls():
+            print("%s = %s" % (d.name(), m[d]))
     else:
         print("the program is correct!")
 
 
 def abs(x):
     return If(x >= 0, x, -x)
+

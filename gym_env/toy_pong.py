@@ -1,7 +1,11 @@
+import os
+
 import gym
-import numpy as np
-import pygame
 from gym.spaces import Box, Discrete
+import numpy as np
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
 
 
 # https://stable-baselines3.readthedocs.io/en/master/guide/rl_tips.html#tips-and-tricks-when-creating-a-custom-environment
@@ -12,8 +16,10 @@ class ToyPong(gym.Env):
     max_speed = 2
     # *half the paddle length
     paddle_length = 4
+    # See comment in learnings.md
+    paddle_speed = 2
     # Must always be > max_speed to prevent ball from passing through paddle
-    paddle_height = 2
+    paddle_height = 2.5
 
     max_timesteps = 250
 
@@ -44,6 +50,8 @@ class ToyPong(gym.Env):
         self.window = None
         self.clock = None
 
+        self.record = []
+
     def rand_vel(self):
         return np.random.uniform(self.min_speed, self.max_speed) * np.random.choice([-1, 1])
 
@@ -53,12 +61,16 @@ class ToyPong(gym.Env):
         self.ball_pos_y = np.random.uniform(0, self.height / 2)
         self.ball_vel_x = self.rand_vel()
         self.ball_vel_y = self.rand_vel()
+        # self.ball_pos_y = 4 # 3.74540119 # np.random.uniform(0, self.height / 2)
+        # self.ball_vel_x = 1.6 # 1.659984046034179 # self.rand_vel()
+        # self.ball_vel_y = 2 # 1.9821683433294357 # self.rand_vel()
         self.t = 0
         self.window = None
 
         if self.render_mode == "human":
             self.render()
 
+        self.record = [self.observation()]
         return self.observation()
 
     def observation(self):
@@ -69,9 +81,9 @@ class ToyPong(gym.Env):
         self.t += 1
 
         if action == 0:
-            self.paddle_x = max(self.paddle_x - 1, 0)
+            self.paddle_x = max(self.paddle_x - self.paddle_speed, 0)
         elif action == 1:
-            self.paddle_x = min(self.paddle_x + 1, self.width)
+            self.paddle_x = min(self.paddle_x + self.paddle_speed, self.width)
         else:
             pass
 
@@ -93,12 +105,15 @@ class ToyPong(gym.Env):
         done = False
         reward = 1
         # If the ball hits the paddle, it will bounce back
-        # THe paddle needs a small implicit thickness (= ball vel y) so that the ball cannot pass through
+        # The paddle needs a small implicit thickness (> ball vel y) so that the ball cannot pass through
         if (self.height + self.paddle_height >= self.ball_pos_y >= self.height) and \
                 self.paddle_x - self.paddle_length <= self.ball_pos_x \
                 <= self.paddle_x + self.paddle_length:
-            self.ball_vel_y *= -1
+            self.ball_vel_y = -abs(self.ball_vel_y)
         elif self.ball_pos_y > self.height:
+            # self.record.append(self.observation())
+            # from pprint import pprint
+            # pprint(self.record)
             # import pdb; pdb.set_trace()
             done = True
             reward = 0
@@ -109,7 +124,15 @@ class ToyPong(gym.Env):
         if self.render_mode == "human":
             self.render()
 
+        self.record.append(self.observation())
         return self.observation(), reward, done, {}
+
+    def replay(self):
+        for obs in self.record:
+            self.paddle_x, self.ball_pos_x, self.ball_pos_y, self.ball_vel_x, self.ball_vel_y = obs
+            self.render()
+            import time
+            time.sleep(0.1)
 
     def render(self, mode="human"):
         scale = 10
@@ -133,10 +156,11 @@ class ToyPong(gym.Env):
                 (self.paddle_x - self.paddle_length) * scale,
                 self.height * scale,
                 (2 * self.paddle_length) * scale,
-                self.paddle_height * scale,
+                self.paddle_height * scale
             ),
         )
 
+        # Ball
         pygame.draw.rect(
             canvas,
             (0, 0, 255),
@@ -147,7 +171,6 @@ class ToyPong(gym.Env):
                 scale,
             ),
         )
-        # Ball
 
         # The following line copies our drawings from `canvas` to the visible window
         self.window.blit(canvas, canvas.get_rect())

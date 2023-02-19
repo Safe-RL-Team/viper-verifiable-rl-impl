@@ -1,4 +1,6 @@
 def get_oracle_path(args):
+    if args.oracle_path is not None:
+        return args.oracle_path
     return "./log/oracle_" + args.env_name
 
 

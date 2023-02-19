@@ -27,6 +27,9 @@ if __name__ == "__main__":
     parent_parser.add_argument(
         "--render", action='store_true',
         help="Whether to render the environment during training or testing")
+    parent_parser.add_argument(
+        "--oracle-path", type=str,
+        help="Provide a different path to load and save the oracle model from/to.")
 
     # Env
     parent_parser.add_argument(
@@ -51,6 +54,9 @@ if __name__ == "__main__":
     train_oracle.add_argument(
         "--resume", action='store_true',
         help="Whether to resume training a previously saved model.")
+    train_oracle.add_argument(
+        "--log-prefix", type=str, default="",
+        help="An optional prefix to add to the log file name.")
 
     test_oracle = subparsers.add_parser('test-oracle', parents=[parent_parser], help="Test oracle")
 
@@ -73,15 +79,16 @@ if __name__ == "__main__":
         "--max-depth", type=int, default=None,
         help="Maximum depth to use for the extracted decision tree")
 
-    test_viper = subparsers.add_parser('verify-correct', parents=[parent_parser],
-                                       help="Verify correctness of the distilled policy.")
-    test_viper.add_argument(
+    verify_correct = subparsers.add_parser('verify-correct', parents=[parent_parser],
+                                           help="Verify correctness of the toy pong example.")
+    verify_correct.add_argument(
         "--max-leaves", type=int, default=None,
         help="Maximum number of leave nodes to use for the extracted decision tree")
-    test_viper.add_argument(
+    verify_correct.add_argument(
         "--max-depth", type=int, default=None,
         help="Maximum depth to use for the extracted decision tree")
 
     args = main_parser.parse_args()
     func = COMMAND_MAP[args.command]
     func(args)
+
