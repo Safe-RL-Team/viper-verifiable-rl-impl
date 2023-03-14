@@ -31,6 +31,7 @@ class ToyPong(gym.Env):
     render_mode = None
 
     def __init__(self, args):
+        self.args = args
         if args.render:
             self.render_mode = "human"
 
@@ -43,14 +44,22 @@ class ToyPong(gym.Env):
 
         self.paddle_x = self.width / 2
         self.ball_pos_x = self.width / 2
+        if args.rand_ball_start:
+            self.ball_pos_x = np.random.uniform(0, self.width / 2)
+
         self.ball_pos_y = np.random.uniform(0, self.height / 2)
         self.ball_vel_x = self.rand_vel()
         self.ball_vel_y = self.rand_vel()
         self.t = 0
         self.window = None
         self.clock = None
-
-        self.record = []
+        self.ball_vel_x = 0.166
+        self.ball_vel_y = 1.669
+        self.ball_pos_y = 10
+        self.ball_pos_x = 29.686
+        self.paddle_x = 15
+        self.observations = []
+        self.actions = []
 
     def rand_vel(self):
         return np.random.uniform(self.min_speed, self.max_speed) * np.random.choice([-1, 1])
@@ -61,16 +70,16 @@ class ToyPong(gym.Env):
         self.ball_pos_y = np.random.uniform(0, self.height / 2)
         self.ball_vel_x = self.rand_vel()
         self.ball_vel_y = self.rand_vel()
-        # self.ball_pos_y = 4 # 3.74540119 # np.random.uniform(0, self.height / 2)
-        # self.ball_vel_x = 1.6 # 1.659984046034179 # self.rand_vel()
-        # self.ball_vel_y = 2 # 1.9821683433294357 # self.rand_vel()
+        # Time to floor = (height - ball_pos_y) / ball_vel_y = 10 / 1.669 = 6
+        # Time to paddle = (30 - ball_pos_x) / ball_vel_x = 0.686 / 0.166 = 4.14
+
         self.t = 0
         self.window = None
 
         if self.render_mode == "human":
             self.render()
 
-        self.record = [self.observation()]
+        self.observations = [self.observation()]
         return self.observation()
 
     def observation(self):
@@ -78,6 +87,7 @@ class ToyPong(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action)
+        self.actions.append(action)
         self.t += 1
 
         if action == 0:
@@ -111,9 +121,9 @@ class ToyPong(gym.Env):
                 <= self.paddle_x + self.paddle_length:
             self.ball_vel_y = -abs(self.ball_vel_y)
         elif self.ball_pos_y > self.height:
-            # self.record.append(self.observation())
+            # self.observations.append(self.observation())
             # from pprint import pprint
-            # pprint(self.record)
+            # pprint(self.observations)
             # import pdb; pdb.set_trace()
             done = True
             reward = 0
@@ -124,11 +134,11 @@ class ToyPong(gym.Env):
         if self.render_mode == "human":
             self.render()
 
-        self.record.append(self.observation())
+        self.observations.append(self.observation())
         return self.observation(), reward, done, {}
 
     def replay(self):
-        for obs in self.record:
+        for obs in self.observations:
             self.paddle_x, self.ball_pos_x, self.ball_pos_y, self.ball_vel_x, self.ball_vel_y = obs
             self.render()
             import time

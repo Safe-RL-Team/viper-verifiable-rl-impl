@@ -22,32 +22,30 @@ def train_viper(args):
     dataset = []
     policy = None
     policies = []
+    rewards = []
 
-    for i in tqdm(range(args.n_iter)):
+    for i in tqdm(range(args.n_iter), disable=args.verbose > 0):
         beta = 1 if i == 0 else 0
         dataset += sample_trajectory(args, policy, beta)
 
-        clf = DecisionTreeClassifier(max_depth=args.max_depth, max_leaf_nodes=args.max_leaves)
+        clf = DecisionTreeClassifier(ccp_alpha=0.0001, criterion="entropy", max_depth=args.max_depth,
+                                     max_leaf_nodes=args.max_leaves)
         x = np.array([traj[0] for traj in dataset])
         y = np.array([traj[1] for traj in dataset])
         weight = np.array([traj[2] for traj in dataset])
 
+        # x, y, weight = resample(x, y, weight)
         clf.fit(x, y, sample_weight=weight)
 
         policies.append(clf)
         policy = clf
-
-    print(f"Viper iteration complete. Dataset size: {len(dataset)}")
-    print(f"Performing cross-validation to find the best policy")
-    # Cross validate each policy and save the best one
-    rewards = []
-    for i, policy in enumerate(tqdm(policies)):
         env = make_env(args, test_viper=True)
-        mean_reward, std_reward = evaluate_policy(TreeWrapper(policy), env)
+        mean_reward, std_reward = evaluate_policy(TreeWrapper(policy), env, n_eval_episodes=100)
         if args.verbose == 2:
             print(f"Policy score: {mean_reward:0.4f} +/- {std_reward:0.4f}")
         rewards.append(mean_reward)
 
+    print(f"Viper iteration complete. Dataset size: {len(dataset)}")
     best_policy = policies[np.argmax(rewards)]
     path = get_viper_path(args)
     print(f"Best policy:\t{np.argmax(rewards)}")
@@ -55,6 +53,12 @@ def train_viper(args):
     wrapper = TreeWrapper(best_policy)
     wrapper.print_info()
     wrapper.save(path)
+
+
+def resample(x, y, weight):
+    n = len(x)
+    idx = np.random.choice(n, size=n, replace=True, p=weight / weight.sum())
+    return x[idx], y[idx], weight[idx]
 
 
 def load_oracle_env(args):

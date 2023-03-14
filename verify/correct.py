@@ -69,100 +69,107 @@ def verify_correct(args):
             [And(s[feature] <= threshold) if op == "<=" else And(s[feature] > threshold) for feature, op, threshold in
              conditions])
 
-    t_max = 2 # math.ceil(2 * env.height / env.min_speed)
+    t_max = 2  # math.ceil(2 * env.height / env.min_speed)
 
     # Create vector of state variables for each timestep
     # s = [paddle_x, ball_pos_x, ball_pos_y, ball_vel_x, ball_vel_y]
     s = [RealVector('s_t_{}'.format(i), 5) for i in range(t_max)]
 
-    def phi_t(s_t, s_t_1):
-        results = []
+    def phi_t(s_now, s_next):
+        controller = []
         for partition in tree_partitions.values():
             # the tree partitions only affect the paddle position
-            next_state_is_s_t = And(s_t[0] == s_t[0] + env.paddle_speed * partition['value'])
-            results.append(Implies(is_state_in_partition(s_t_1, partition), next_state_is_s_t))
+            next_state_is_s_t = And(s_next[0] == s_now[0] + env.paddle_speed * partition['value'])
+            controller.append(Implies(is_state_in_partition(s_now, partition), next_state_is_s_t))
 
         # Manually add the dynamics of the ball
-        collision_left = And(s_t_1[1] < 0)
+        system = []
+        # No collision, i.e. the ball is within the box
+        no_collision = And([s_now[1] >= 0, s_now[1] <= env.width, s_now[2] >= 0, s_now[2] <= env.height])
+        no_collision_beta = And([
+            # Keep moving in the x direction
+            s_next[1] == s_now[3] + s_now[1],
+            # Keep moving in the y direction
+            s_next[2] == s_now[4] + s_now[2],
+            # Keep x vel
+            s_next[3] == s_now[3],
+            # Keep y vel
+            s_next[4] == s_now[4],
+        ])
+        system.append(Implies(no_collision, no_collision_beta))
+
+        collision_left = And(s_now[1] < 0)
         collision_left_beta = And([
-            s_t[1] == 0,
+            s_next[1] == 0,
             # Keep moving in the y direction
-            s_t[2] == s_t_1[4] + s_t[2],
+            s_next[2] == s_now[4] + s_now[2],
             # Make x vel positive
-            s_t[3] == abs(s_t_1[3]),
+            s_next[3] == abs(s_now[3]),
             # Keep y vel
-            s_t[4] == s_t_1[4]
+            s_next[4] == s_now[4]
         ])
-        results.append(Implies(collision_left, collision_left_beta))
+        system.append(Implies(collision_left, collision_left_beta))
 
-        collision_right = And(s_t_1[1] > env.width)
+        collision_right = And(s_now[1] > env.width)
         collision_right_beta = And([
-            s_t[1] == env.width,
+            s_next[1] == env.width,
             # Keep moving in the y direction
-            s_t[2] == s_t_1[4] + s_t[2],
+            s_next[2] == s_now[4] + s_now[2],
             # Make x vel negative
-            s_t[3] == -abs(s_t_1[3]),
+            s_next[3] == -abs(s_now[3]),
             # Keep y vel
-            s_t[4] == s_t_1[4]
+            s_next[4] == s_now[4]
         ])
-        results.append(Implies(collision_right, collision_right_beta))
+        system.append(Implies(collision_right, collision_right_beta))
 
-        collision_top = And(s_t_1[2] < 0)
+        collision_top = And(s_now[2] < 0)
         collision_top_beta = And([
             # Keep moving in the x direction
-            s_t[1] == s_t_1[3] + s_t[1],
-            s_t[2] == 0,
+            s_next[1] == s_now[3] + s_now[1],
+            s_next[2] == 0,
             # Keep x vel
-            s_t[3] == s_t_1[3],
+            s_next[3] == s_now[3],
             # Make y vel positive
-            s_t[4] == abs(s_t_1[4])
+            s_next[4] == abs(s_now[4])
         ])
-        results.append(Implies(collision_top, collision_top_beta))
+        system.append(Implies(collision_top, collision_top_beta))
 
-        #
-        collision_bottom = And([s_t_1[2] > env.height,
+        # Ball passes through the bottom of the screen
+        collision_bottom = And([s_now[2] > env.height,
                                 # Ball misses the paddle
-                                Or([s_t_1[1] < s_t_1[0] - env.paddle_length, s_t_1[1] > s_t_1[0] + env.paddle_length])])
-        collision_bottom_beta = And([
-            # Keep moving in the x direction
-            s_t[1] == s_t_1[3] + s_t[1],
-            # Keep moving in the y direction
-            s_t[2] == s_t_1[4] + s_t[2],
-            # Keep x vel
-            s_t[3] == s_t_1[3],
-            # Keep y vel
-            s_t[4] == s_t[4],
-        ])
-        results.append(Implies(collision_bottom, collision_bottom_beta))
+                                Or([s_now[1] < s_now[0] - env.paddle_length, s_now[1] > s_now[0] + env.paddle_length])])
+        system.append(Implies(collision_bottom, no_collision_beta))
 
         # Ball hits the paddle
-        collision_bottom_paddle = And([s_t_1[2] > env.height,
-                                       And([s_t_1[1] >= s_t_1[0] - env.paddle_length,
-                                            s_t_1[1] <= s_t_1[0] + env.paddle_length])])
+        collision_bottom_paddle = And([s_now[2] > env.height,
+                                       And([s_now[1] >= s_now[0] - env.paddle_length,
+                                            s_now[1] <= s_now[0] + env.paddle_length])])
         collision_bottom_paddle_beta = And([
             # Keep moving in the x direction
-            s_t[1] == s_t_1[3] + s_t[1],
-            s_t[2] == env.height,
+            s_next[1] == s_now[3] + s_now[1],
+            s_next[2] == env.height,
             # Keep x vel
-            s_t[3] == s_t_1[3],
+            s_next[3] == s_now[3],
             # Make y vel negative
-            s_t[4] == -abs(s_t_1[4])
+            s_next[4] == -abs(s_now[4])
         ])
-        results.append(Implies(collision_bottom_paddle, collision_bottom_paddle_beta))
-        print("phi_t len", len(results))
-        return Or(results)
+        system.append(Implies(collision_bottom_paddle, collision_bottom_paddle_beta))
+        return And(Or(system), Or(controller))
 
     # Check if the state is in a partition
 
     # Assert that we are at a safe state at timestep t
     # i.e. the ball is in the top half of the screen
-    y_t_safe = And([And(s_t[2] >= 0, s_t[2] <= env.height / 2) for s_t in s[1:]])
-    y_0_safe = And(s[0][2] >= 0, s[0][2] <= env.height / 2)
+    y_t_safe = Or([And(s_t[2] > 0, s_t[2] <= env.height / 2) for s_t in s[1:]])
+    y_0_safe = And(s[0][2] > 0, s[0][2] <= env.height / 2, s[0][1] >= 0, s[0][1] <= env.width)
 
     # Assert that the state transitions are correct
-    phi = [phi_t(s_t, s_t_1) for s_t, s_t_1 in pairwise(s)]
+    phi = [phi_t(s_t_1, s_t) for s_t_1, s_t in pairwise(s)]
+    vel_constraint = [
+        And([s_t[3] >= -env.max_speed, s_t[3] <= env.max_speed, s_t[4] >= -env.max_speed, s_t[4] <= env.max_speed]) for
+        s_t in s]
 
-    program = Implies(And([y_0_safe] + phi), y_t_safe)
+    program = Implies(And([y_0_safe] + phi + vel_constraint), y_t_safe)
 
     # To show that the program is correct, we need to show that its **negation** is unsatisfiable
     # i.e. there is no counterexample to the program
@@ -180,4 +187,3 @@ def verify_correct(args):
 
 def abs(x):
     return If(x >= 0, x, -x)
-
