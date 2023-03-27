@@ -30,11 +30,18 @@ if __name__ == "__main__":
     parent_parser.add_argument(
         "--oracle-path", type=str,
         help="Provide a different path to load and save the oracle model from/to.")
+    parent_parser.add_argument(
+        "--rand-ball-start", action='store_true',
+        help="Whether to randomize the initialize the x position of the ball in ToyPong.")
+    parent_parser.add_argument(
+        "--log-prefix", type=str, default="",
+        help="An optional prefix to add to log file names.")
+
 
     # Env
     parent_parser.add_argument(
         "--env-name", type=str, default="",
-        help="OpenAI gym environment name")
+        help="Gym environment name")
     parent_parser.add_argument(
         "--ep-horizon", type=int, default=150,
         help="Episode is terminated when max timestep is reached")
@@ -54,9 +61,6 @@ if __name__ == "__main__":
     train_oracle.add_argument(
         "--resume", action='store_true',
         help="Whether to resume training a previously saved model.")
-    train_oracle.add_argument(
-        "--log-prefix", type=str, default="",
-        help="An optional prefix to add to the log file name.")
 
     test_oracle = subparsers.add_parser('test-oracle', parents=[parent_parser], help="Test oracle")
 

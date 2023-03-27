@@ -58,5 +58,5 @@ Final winning configuration for ToyPong:
 **Tree verification details**
 
 - As mentioned before the linear program verification method works for ToyPong.
-- However, the decision tree requires the starting state to be the same as for the training. Otherwise, the tree will not be able to predict the correct action. In the paper this is not mentioned and it seems to be implied that their tree agent generalized to arbitrary starting states. Despite access to a large amount of data and an fine-tuned oracle, I was not able to achieve this.
+- However, the decision tree requires the starting x position to be the same as for the training. Otherwise, the tree will not be able to predict the correct action. In the paper this is not mentioned and it seems to be implied that their tree agent generalized to arbitrary starting states. Despite access to a large amount of data and an fine-tuned oracle, I was not able to achieve this.
 - A well-trained agent would never end up in this state, because an early strategy is to track the position of the ball. Therefore, it's unlikely that such an example would be in the dataset during VIPER.

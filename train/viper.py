@@ -34,11 +34,11 @@ def train_viper(args):
         y = np.array([traj[1] for traj in dataset])
         weight = np.array([traj[2] for traj in dataset])
 
-        # x, y, weight = resample(x, y, weight)
         clf.fit(x, y, sample_weight=weight)
 
         policies.append(clf)
         policy = clf
+
         env = make_env(args, test_viper=True)
         mean_reward, std_reward = evaluate_policy(TreeWrapper(policy), env, n_eval_episodes=100)
         if args.verbose == 2:
@@ -53,12 +53,6 @@ def train_viper(args):
     wrapper = TreeWrapper(best_policy)
     wrapper.print_info()
     wrapper.save(path)
-
-
-def resample(x, y, weight):
-    n = len(x)
-    idx = np.random.choice(n, size=n, replace=True, p=weight / weight.sum())
-    return x[idx], y[idx], weight[idx]
 
 
 def load_oracle_env(args):

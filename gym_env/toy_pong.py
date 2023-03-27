@@ -16,7 +16,7 @@ class ToyPong(gym.Env):
     max_speed = 2
     # *half the paddle length
     paddle_length = 4
-    # See comment in learnings.md
+    # See comment in LEARNINGS.md
     paddle_speed = 2
     # Must always be > max_speed to prevent ball from passing through paddle
     paddle_height = 2.5
@@ -67,11 +67,11 @@ class ToyPong(gym.Env):
     def reset(self):
         self.paddle_x = self.width / 2
         self.ball_pos_x = self.width / 2
+        if self.args.rand_ball_start:
+            self.ball_pos_x = np.random.uniform(0, self.width / 2)
         self.ball_pos_y = np.random.uniform(0, self.height / 2)
         self.ball_vel_x = self.rand_vel()
         self.ball_vel_y = self.rand_vel()
-        # Time to floor = (height - ball_pos_y) / ball_vel_y = 10 / 1.669 = 6
-        # Time to paddle = (30 - ball_pos_x) / ball_vel_x = 0.686 / 0.166 = 4.14
 
         self.t = 0
         self.window = None
@@ -168,6 +168,7 @@ class ToyPong(gym.Env):
                 (2 * self.paddle_length) * scale,
                 self.paddle_height * scale
             ),
+            border_radius=2
         )
 
         # Ball
@@ -180,6 +181,7 @@ class ToyPong(gym.Env):
                 scale,
                 scale,
             ),
+            border_radius=2
         )
 
         # The following line copies our drawings from `canvas` to the visible window
