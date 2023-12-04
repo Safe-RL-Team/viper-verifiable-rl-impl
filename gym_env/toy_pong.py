@@ -121,6 +121,7 @@ class ToyPong(gym.Env):
                 <= self.paddle_x + self.paddle_length:
             self.ball_vel_y = -abs(self.ball_vel_y)
         elif self.ball_pos_y > self.height:
+            # Uncomment to debug failure conditions:
             # self.observations.append(self.observation())
             # from pprint import pprint
             # pprint(self.observations)
